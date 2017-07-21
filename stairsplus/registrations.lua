@@ -44,6 +44,8 @@ local default_nodes = { -- Default stairs/slabs/panels/microblocks:
 	"farming:straw"
 }
 
+stairsplus.def_nodes = default_nodes
+
 for _, name in pairs(default_nodes) do
 	local nodename = "default:"..name
 	local a,b = string.find(name, ":")

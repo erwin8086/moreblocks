@@ -32,14 +32,14 @@ circular_saw.cost_in_microblocks = {
 }
 
 circular_saw.names = {
-	{"micro", "_1"},
-	{"panel", "_1"},
+	{"workbench", workbench.defs[1], {"micro", "_1"} },
+	{"workbench", workbench.defs[2], {"panel", "_1"} },
 	{"micro", "_2"},
 	{"panel", "_2"},
 	{"micro", "_4"},
 	{"panel", "_4"},
-	{"micro", ""},
-	{"panel", ""},
+	{"workbench", workbench.defs[5], {"micro", ""} },
+	{"workbench", workbench.defs[6], {"panel", ""} },
 
 	{"micro", "_12"},
 	{"panel", "_12"},
@@ -47,14 +47,14 @@ circular_saw.names = {
 	{"panel", "_14"},
 	{"micro", "_15"},
 	{"panel", "_15"},
-	{"stair", "_outer"},
-	{"stair", ""},
+	{"workbench", workbench.defs[10], {"stair", "_outer"} },
+	{"workbench", workbench.defs[11], {"stair", ""} },
 
-	{"stair", "_inner"},
-	{"slab", "_1"},
+	{"workbench", workbench.defs[12], {"stair", "_inner"} },
+	{"workbench", workbench.defs[3], {"slab", "_1"} },
 	{"slab", "_2"},
 	{"slab", "_quarter"},
-	{"slab", ""},
+	{"workbench", workbench.defs[7], {"slab", ""} },
 	{"slab", "_three_quarter"},
 	{"slab", "_14"},
 	{"slab", "_15"},
@@ -62,11 +62,11 @@ circular_saw.names = {
 	{"slab", "_two_sides"},
 	{"slab", "_three_sides"},
 	{"slab", "_three_sides_u"},
-	{"stair", "_half"},
-	{"stair", "_alt_1"},
+	{"workbench", workbench.defs[9], {"stair", "_half"} },
+	{"workbench", workbench.defs[4], {"stair", "_alt_1"} },
 	{"stair", "_alt_2"},
 	{"stair", "_alt_4"},
-	{"stair", "_alt"},
+	{"workbench", workbench.defs[8], {"stair", "_alt"} },
 
 	{"slope", ""},
 	{"slope", "_half"},
@@ -95,7 +95,7 @@ function circular_saw:get_cost(inv, stackname)
 	end
 end
 
-function circular_saw:get_output_inv(modname, material, amount, max)
+function circular_saw:get_output_inv(modname, material, amount, max, is_def)
 	if (not max or max < 1 or max > 99) then max = 99 end
 
 	local list = {}
@@ -110,7 +110,23 @@ function circular_saw:get_output_inv(modname, material, amount, max)
 		local t = circular_saw.names[i]
 		local cost = circular_saw.cost_in_microblocks[i]
 		local balance = math.min(math.floor(amount/cost), max)
-		local nodename = modname .. ":" .. t[1] .. "_" .. material .. t[2]
+		local nodename
+		-- Return the same item as the workbench...
+        if t[1] == "workbench" then
+			local mn = modname
+			if is_def then
+				mn = "default"
+			end
+			nodename = mn..":"..material.."_"..t[2][1]
+			nodename = t[2][3] and nodename or "stairs:"..t[2][1].."_"..material
+			-- If block can cut but not in the workbench then return normal
+			if not minetest.registered_nodes[nodename] then
+				t = t[3]
+				nodename = modname .. ":" .. t[1] .. "_" .. material .. t[2]
+			end
+        else
+			nodename = modname .. ":" .. t[1] .. "_" .. material .. t[2]
+        end
 		if  minetest.registered_nodes[nodename] then
 			pos = pos + 1
 			list[pos] = nodename .. " " .. balance
@@ -172,9 +188,19 @@ function circular_saw:update_inventory(pos, amount)
 		node_name.. " " .. math.floor(amount / 8)
 	})
 
+	-- For workbench nodes we need to know if this is default...
+	local is_def = false
 	-- The stairnodes made of default nodes use moreblocks namespace, other mods keep own:
 	if modname == "default" then
 		modname = "moreblocks"
+        is_def = true
+	elseif modname == "moreblocks" then
+		for _, n in ipairs(stairsplus.def_nodes) do
+			if n == material then
+				is_def=true
+				break
+			end
+		end
 	end
 	-- print("circular_saw set to " .. modname .. " : "
 	--	.. material .. " with " .. (amount) .. " microblocks.")
@@ -186,7 +212,7 @@ function circular_saw:update_inventory(pos, amount)
 	-- Display:
 	inv:set_list("output",
 		self:get_output_inv(modname, material, amount,
-				meta:get_int("max_offered")))
+				meta:get_int("max_offered"), is_def))
 	-- Store how many microblocks are available:
 	meta:set_int("anz", amount)
 
