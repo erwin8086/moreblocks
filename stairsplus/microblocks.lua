@@ -99,7 +99,14 @@ function stairsplus:register_micro(modname, subname, recipeitem, fields)
 		if fields.drop and not (type(fields.drop) == "table") then
 			def.drop = modname.. ":micro_" ..fields.drop..alternate
 		end
-		minetest.register_node(":" ..modname.. ":micro_" ..subname..alternate, def)
+		-- If it produce light use light.register_light -> to require power
+		if def.light_source and def.light_source > 0 then
+			def.power_type = "electric"
+			def.eu_demand = 6
+			light.register_light(":" ..modname.. ":micro_" ..subname..alternate, def)
+		else
+			minetest.register_node(":" ..modname.. ":micro_" ..subname..alternate, def)
+		end
 	end
 	minetest.register_alias(modname.. ":micro_" ..subname.. "_bottom", modname.. ":micro_" ..subname)
 
